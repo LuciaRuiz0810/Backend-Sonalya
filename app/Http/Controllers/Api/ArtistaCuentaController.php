@@ -10,6 +10,7 @@ use App\Models\Evento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * Panel del artista: gestión de perfil, canciones y álbumes propios.
@@ -87,13 +88,14 @@ class ArtistaCuentaController extends Controller
     {
         $this->soloArtista($request);
 
+        $artistaId = $request->user()->id;
         $request->validate([
             'titulo'    => ['required', 'string', 'max:200'],
             'duracion'  => ['sometimes', 'string', 'max:10'],
             'imagen'    => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'audio'     => ['sometimes', 'nullable', 'file', 'mimes:mp3,mpeg,ogg,wav,m4a,aac,flac', 'max:102400'],
+            'audio'     => ['sometimes', 'nullable', 'file', 'mimes:mp3,ogg,wav,m4a,aac,flac', 'max:102400'],
             'genero'    => ['sometimes', 'nullable', 'string', 'max:80'],
-            'album_id'  => ['sometimes', 'nullable', 'integer', 'exists:albumes_artista,id'],
+            'album_id'  => ['sometimes', 'nullable', 'integer', Rule::exists('albumes_artista', 'id')->where('artista_id', $artistaId)],
         ]);
 
         $datos = [
@@ -121,23 +123,28 @@ class ArtistaCuentaController extends Controller
         $this->soloArtista($request);
         $cancion = CancionArtista::where('artista_id', $request->user()->id)->findOrFail($id);
 
+        // Normalizar album_id: cadena vacía significa "sin álbum" (null)
+        if ($request->has('album_id') && $request->album_id === '') {
+            $request->merge(['album_id' => null]);
+        }
+
+        $artistaId = $request->user()->id;
         $request->validate([
             'titulo'    => ['sometimes', 'string', 'max:200'],
             'duracion'  => ['sometimes', 'string', 'max:10'],
             'imagen'    => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'audio'     => ['sometimes', 'nullable', 'file', 'mimes:mp3,mpeg,ogg,wav,m4a,aac,flac', 'max:102400'],
+            'audio'     => ['sometimes', 'nullable', 'file', 'mimes:mp3,ogg,wav,m4a,aac,flac', 'max:102400'],
             'genero'    => ['sometimes', 'nullable', 'string', 'max:80'],
-            'album_id'  => ['sometimes', 'nullable', 'integer', 'exists:albumes_artista,id'],
+            'album_id'  => ['sometimes', 'nullable', 'integer', Rule::exists('albumes_artista', 'id')->where('artista_id', $artistaId)],
             'activa'    => ['sometimes', 'boolean'],
         ]);
 
-        $datos = array_filter([
-            'titulo'   => $request->titulo,
-            'duracion' => $request->duracion,
-            'genero'   => $request->genero,
-            'album_id' => $request->album_id ?: null,
-            'activa'   => $request->activa,
-        ], fn ($v) => !is_null($v));
+        $datos = [];
+        if ($request->has('titulo'))    $datos['titulo']    = $request->titulo;
+        if ($request->has('duracion'))  $datos['duracion']  = $request->duracion;
+        if ($request->has('genero'))    $datos['genero']    = $request->genero ?: null;
+        if ($request->has('album_id'))  $datos['album_id']  = $request->album_id ?: null;
+        if ($request->has('activa'))    $datos['activa']    = $request->boolean('activa');
 
         if ($request->hasFile('imagen')) {
             if ($cancion->imagen) $this->borrarArchivo($cancion->imagen);
@@ -209,6 +216,13 @@ class ArtistaCuentaController extends Controller
         $this->soloArtista($request);
         $album = AlbumArtista::where('artista_id', $request->user()->id)->findOrFail($id);
 
+        // Normalizar campos opcionales: cadena vacía equivale a null
+        foreach (['genero', 'descripcion', 'publicado_at'] as $campo) {
+            if ($request->has($campo) && $request->$campo === '') {
+                $request->merge([$campo => null]);
+            }
+        }
+
         $request->validate([
             'titulo'       => ['sometimes', 'string', 'max:200'],
             'imagen'       => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -217,12 +231,11 @@ class ArtistaCuentaController extends Controller
             'publicado_at' => ['sometimes', 'nullable', 'date'],
         ]);
 
-        $datos = array_filter([
-            'titulo'       => $request->titulo,
-            'genero'       => $request->genero,
-            'descripcion'  => $request->descripcion,
-            'publicado_at' => $request->publicado_at,
-        ], fn ($v) => !is_null($v));
+        $datos = [];
+        if ($request->has('titulo'))       $datos['titulo']       = $request->titulo;
+        if ($request->has('genero'))       $datos['genero']       = $request->genero ?: null;
+        if ($request->has('descripcion'))  $datos['descripcion']  = $request->descripcion ?: null;
+        if ($request->has('publicado_at')) $datos['publicado_at'] = $request->publicado_at ?: null;
 
         if ($request->hasFile('imagen')) {
             if ($album->imagen) $this->borrarArchivo($album->imagen);

@@ -12,7 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
+        // statefulApi() removed: app uses Bearer tokens only, not cookie sessions.
+        // Keeping it active caused Sanctum to prefer the web session over the Bearer
+        // token when the request originated from the same host, resolving a different
+        // user and triggering the soloArtista 403 check incorrectly.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -22,7 +22,8 @@ class EventoController extends Controller
 {
     public function index()
     {
-        $user   = auth()->user();
+        // Ruta pública: intentar resolver usuario autenticado vía Bearer token
+        $user   = auth()->user() ?? auth('sanctum')->user();
         $userId = $user?->id;
 
         $eventos = Evento::orderBy('fecha', 'asc')->get();
@@ -55,7 +56,8 @@ class EventoController extends Controller
 
     public function eventosTalentos()
     {
-        $user   = auth()->user();
+        // Ruta pública: intentar resolver usuario autenticado vía Bearer token
+        $user   = auth()->user() ?? auth('sanctum')->user();
         $userId = $user?->id;
 
         $eventos = Evento::where('nuevo_talento', true)->orderBy('fecha', 'asc')->get();

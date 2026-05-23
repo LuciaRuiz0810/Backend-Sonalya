@@ -113,7 +113,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Eventos (protegidos)
-    Route::get('/eventos',                    [EventoController::class, 'index']);
     Route::get('/eventos/seguidos',           [EventoController::class, 'eventosSeguidos']);
     Route::post('/eventos/{id}/comprar',      [EventoController::class, 'comprar']);
     Route::get('/mis-entradas',               [EventoController::class, 'misEntradas']);
